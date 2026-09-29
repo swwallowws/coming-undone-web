@@ -7,7 +7,7 @@
 import { demoShell } from "../vendor/design/demoshell.js";
 import { iconButton } from "../vendor/design/iconbutton.js";
 import { noteColor } from "../vendor/design/tokens.js";
-import { seekable } from "../vendor/design/playhead.js";
+import { seekable, heardTime } from "../vendor/design/playhead.js";
 
 const $ = (id) => document.getElementById(id);
 const fmtT = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
@@ -67,9 +67,11 @@ const modes = {}; // part id -> "audio" | "midi"
 
 // playback starts 50 ms after the click, so clamp that lead-in to the start
 const songTime = () => (playing ? Math.max(pos, pos + (ctx.currentTime - t0)) : pos);
-// where the playhead is drawn: under the pointer while a drag moves it during playback
+// where the playhead is drawn: under the pointer while a drag moves it during playback;
+// otherwise what is heard, the song's time less the output's delay (200 ms or more on
+// Bluetooth), held where playback started until its sound arrives
 let scrubAt = null;
-const headTime = () => scrubAt ?? songTime();
+const headTime = () => scrubAt ?? (playing ? heardTime(songTime(), pos, ctx) : songTime());
 const part = (id) => data.parts.find((p) => p.id === id);
 const midiOn = () => solo !== null && modes[solo] === "midi";
 

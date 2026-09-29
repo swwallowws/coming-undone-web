@@ -29,6 +29,21 @@ export function timeAt(clientX, left, width, duration) {
   return clampTime(((clientX - left) / width) * duration, duration);
 }
 
+/** The output's own delay in seconds: how long after an AudioContext makes a sound it reaches
+ *  the ear. Bluetooth headphones add 200 ms or more (outputLatency), wired or built-in
+ *  speakers 10 to 20 ms. 0 without a context. */
+export function outputDelay(ctx) {
+  return ctx ? (ctx.outputLatency || 0) + (ctx.baseLatency || 0) : 0;
+}
+
+/** Where the listener is, for drawing a playing head: the player's time `t` less the output's
+ *  delay, but never before `since`, the place the last start or seek went to. Until that jump's
+ *  sound arrives the head waits there, so it never draws behind a jump. Paused, draw the
+ *  player's own time. */
+export function heardTime(t, since, ctx) {
+  return Math.max(since, t - outputDelay(ctx));
+}
+
 const read = (v) => (typeof v === "function" ? v() : v);
 
 /** Make `el` seekable. Options:
