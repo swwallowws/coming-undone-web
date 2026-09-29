@@ -1,0 +1,1239 @@
+<!doctype html>
+<html lang="en" data-category="transcribe">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Coming Undone</title>
+<link rel="icon" href="./favicons/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="icon" href="./favicons/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="./favicons/apple-touch-icon.png">
+<link rel="stylesheet" href="./vendor/design/tokens.css">
+<link rel="stylesheet" href="./vendor/design/playhead.css">
+<script>
+  // ?theme=paper|night pins the theme, like the demos; otherwise it follows the system
+  try { const t = new URLSearchParams(location.search).get("theme");
+        if (t === "paper" || t === "night") document.documentElement.dataset.theme = t; } catch (_) {}
+</script>
+<style>
+  :root { --melody: var(--acc); --bass: var(--ink); --comping: var(--ink-mut); }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--ground); color: var(--ink); font-family: var(--font-sans);
+         font-size: 14px; line-height: 1.45; font-variant-numeric: tabular-nums; }
+  header.bar { display: flex; gap: 16px; align-items: baseline; padding: 16px 24px; border-bottom: var(--hairline); flex-wrap: wrap; }
+  header.bar h1 { margin: 0; font-size: 22px; font-weight: var(--head-weight); font-stretch: var(--head-stretch); letter-spacing: var(--head-tracking); }
+  header.bar h1 span { color: var(--acc); }
+  .ver { color: var(--ink-mut); font-family: var(--font-mono); font-size: 12px; }
+  .tagline { color: var(--ink-mut); }
+  .wrap { max-width: 900px; margin: 0 auto; padding: 24px 24px 80px; }
+  .mono { font-family: var(--font-mono); font-size: 12.5px; }
+  .hidden { display: none !important; }
+
+  /* sections: hairline rules, no cards */
+  .panel { border-top: var(--hairline); padding: 16px 0 24px; }
+  .panel:first-child { border-top: 0; padding-top: 0; }
+  h2 { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; margin: 0 0 12px; }
+
+  #drop { border: 1px dashed var(--line); padding: 32px 20px; text-align: center; cursor: pointer; background: var(--ground-2); }
+  #drop:hover, #drop.over { border-color: var(--acc); }
+  #drop.has-file { border-style: solid; text-align: left; padding: 14px 16px; }
+  .drop-main { font-weight: 700; }
+  .drop-sub { color: var(--ink-mut); font-size: 13px; margin-top: 4px; }
+  .filename { font-family: var(--font-mono); font-size: 13px; color: var(--acc); }
+
+  .or { display: flex; align-items: center; gap: 12px; color: var(--ink-mut); font-size: 12px; margin: 16px 0 8px; }
+  .or::before, .or::after { content: ""; flex: 1; border-top: var(--hairline); }
+  .row { display: flex; gap: 8px; align-items: center; margin-top: 16px; flex-wrap: wrap; }
+
+  button, a.dlbtn { font: inherit; color: var(--ink); background: var(--ground-2); border: var(--hairline);
+    border-radius: 0; padding: 6px 12px; cursor: pointer; text-decoration: none; display: inline-block; }
+  button:hover:not(:disabled), a.dlbtn:hover { border-color: var(--ink); }
+  button:disabled { opacity: .45; cursor: default; }
+  .primary, a.dlbtn.main { background: var(--acc); color: var(--ground); border-color: var(--acc); font-weight: 700; }
+  .ghost { color: var(--ink-mut); }
+
+  input[type=text], input[type=number], select { width: 100%; font: inherit; color: var(--ink); background: var(--ground-2);
+    border: var(--hairline); border-radius: 0; padding: 6px 8px; }
+  input:focus, select:focus { outline: 2px solid var(--acc); outline-offset: -1px; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px 16px; }
+  label.f { display: block; font-size: 13px; color: var(--ink-mut); margin-bottom: 4px; }
+  .check { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+  .check input { accent-color: var(--acc); width: 14px; height: 14px; }
+  .hint { color: var(--ink-mut); font-size: 12px; margin-top: 4px; }
+
+  #log { font-family: var(--font-mono); font-size: 12.5px; line-height: 1.7; max-height: 240px; overflow-y: auto; white-space: pre-wrap; }
+  .stage { color: var(--acc); }
+  .stage.error { font-weight: 700; }
+  .spin { display: inline-block; width: 10px; height: 10px; margin-right: 8px; background: var(--acc);
+    animation: pulse 1s ease-in-out infinite; vertical-align: 0; }
+  @keyframes pulse { 50% { opacity: .25; } }
+  @media (prefers-reduced-motion: reduce) { .spin { animation: none; } }
+
+  .tempo-hero { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .bpm { font-size: 32px; font-weight: var(--head-weight); font-stretch: var(--head-stretch); letter-spacing: var(--head-tracking); }
+  .bpm-unit { color: var(--ink-mut); font-size: 13px; }
+  .pill { font-family: var(--font-mono); font-size: 11px; padding: 1px 6px; border: var(--hairline); color: var(--ink-mut); }
+  .alts { margin-top: 16px; }
+  .alt-btns { display: inline-flex; flex-wrap: wrap; margin-top: 8px; }
+  .alt-btns .alt { margin-right: -1px; font-family: var(--font-mono); font-size: 12.5px; }
+  .alt.active { background: var(--ink); color: var(--ground); border-color: var(--ink); }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; color: var(--ink-mut); font-weight: 400; font-size: 12px; padding: 0 8px 6px 0; }
+  td { padding: 6px 8px 6px 0; border-top: var(--hairline); }
+  .tname { font-weight: 700; }
+  .dot { display: inline-block; width: 8px; height: 8px; margin-right: 8px; }
+
+
+  .dl { display: flex; gap: 8px; flex-wrap: wrap; }
+  .note { color: var(--ink-mut); font-size: 12px; margin-top: 10px; }
+  .warn-box { border-left: 2px solid var(--acc); padding: 4px 0 4px 12px; margin-bottom: 12px; font-size: 13px; }
+  .err-box { border-left: 2px solid var(--acc); padding: 4px 0 4px 12px; font-family: var(--font-mono); font-size: 12.5px; white-space: pre-wrap; }
+  a { color: var(--ink); text-underline-offset: 3px; }
+  /* the form: a label column and a value column, every option visible */
+  .mut { color: var(--ink-mut); }
+  .spacer { flex: 1; }
+  .form-grid { display: grid; grid-template-columns: 8.5rem 1fr; gap: 18px 16px; align-items: baseline; margin-top: 28px; }
+  .form-grid > .label { color: var(--ink-mut); font-size: 13px; padding-top: 6px; }
+  .choice { display: inline-flex; flex-wrap: wrap; }
+  .choice button { margin-right: -1px; }
+  .choice button.on { background: var(--ink); color: var(--ground); border-color: var(--ink); }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip input { position: absolute; opacity: 0; pointer-events: none; }
+  .chip span { display: inline-flex; align-items: center; gap: 7px; padding: 5px 10px; border: var(--hairline);
+    background: var(--ground-2); cursor: pointer; font-size: 13px; color: var(--ink-mut); }
+  .chip span::before { content: ""; width: 7px; height: 7px; border: 1px solid var(--ink-mut); }
+  .chip span:hover { border-color: var(--ink); }
+  .chip input:checked + span { color: var(--ink); border-color: var(--ink); }
+  .chip input:checked + span::before { background: var(--acc); border-color: var(--acc); }
+  .chip input:focus-visible + span { outline: 2px solid var(--acc); outline-offset: 1px; }
+  .chip.off, .dep-nums.off { opacity: .35; pointer-events: none; }
+  .nums { display: flex; flex-wrap: wrap; gap: 6px 20px; margin-top: 10px; }
+  .num { font-size: 13px; color: var(--ink-mut); display: inline-flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
+  .num input[type=number] { width: 5.5em; font-family: var(--font-mono); font-size: 12.5px; padding: 3px 6px; }
+  button.small { padding: 3px 8px; font-size: 12px; }
+
+  /* results: the transcribed MIDI as a roll, one player, downloads at hand */
+  .result-head { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
+  .roll-box { position: relative; height: 240px; border: var(--hairline); }
+  #roll { display: block; width: 100%; height: 100%; }
+  #roll-head { position: absolute; top: 0; bottom: 0; width: 1.5px; background: var(--acc); pointer-events: none; }
+  .legend { display: flex; gap: 16px; margin: 8px 0 0; font-size: 12px; color: var(--ink-mut); }
+  .legend i { display: inline-block; width: 8px; height: 8px; margin-right: 6px; }
+  /* by part: one lane per output file, each its own small roll on the shared timeline */
+  #parts { --lane-h: 52px; position: relative; display: grid; grid-template-columns: 8.5rem 1fr; gap: 6px 12px; }
+  .part-name { display: flex; flex-direction: column; justify-content: center; min-width: 0; }
+  .part-name a.filename { text-decoration: none; overflow-wrap: anywhere; }
+  .part-name a.filename:hover { text-decoration: underline; }
+  .part-name .mono { font-size: 11.5px; }
+  .part-roll { display: block; width: 100%; height: var(--lane-h); border: var(--hairline); }
+  #parts-head { position: absolute; top: 0; bottom: 0; width: 1.5px; background: var(--acc); pointer-events: none; }
+  .player { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 14px; }
+  .player .primary { min-width: 80px; }
+
+  /* progress: a stage column and its messages; the newest line is the one happening now */
+  #log > div { display: grid; grid-template-columns: 9rem 1fr; gap: 12px; color: var(--ink-mut); }
+  #log > div.now { color: var(--ink); }
+
+  /* the chosen file, drawn as its waveform */
+  #wave-box { border: var(--hairline); background: var(--ground-2); padding: 12px 14px 10px; }
+  .wave-head, .wave-foot { display: flex; align-items: baseline; gap: 8px; }
+  .wave-foot { font-size: 12px; margin-top: 6px; min-height: 22px; align-items: center; }
+  #wave { display: block; width: 100%; height: 96px; margin-top: 10px; cursor: crosshair; touch-action: none; }
+  /* where the run happens: the Runs: switch, a line saying where, and the contact form */
+  .runs { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+  .runs .label { color: var(--ink-mut); font-size: 13px; }
+  .choice button:disabled { opacity: 1; color: var(--ink-mut); border-style: dashed; }
+  .soon { font-family: var(--font-mono); font-size: 11px; margin-left: 6px; }
+  .where { color: var(--ink-mut); font-size: 13px; margin: 0 0 22px; max-width: 62ch; }
+  .where a { color: var(--ink-mut); white-space: nowrap; }
+  .where a:hover { color: var(--ink); }
+  .where .budget { display: block; margin-top: 4px; }
+  .where .budget:empty { display: none; }
+  #contact { border-left: 2px solid var(--acc); padding: 2px 0 4px 14px; margin: -8px 0 24px; max-width: 34rem; }
+  #contact p { margin: 0 0 12px; }
+  #contact form { display: grid; gap: 10px; }
+  #contact label.f { margin-bottom: 2px; }
+  #contact textarea { width: 100%; min-height: 5.5em; font: inherit; color: var(--ink); background: var(--ground-2);
+    border: var(--hairline); border-radius: 0; padding: 6px 8px; resize: vertical; }
+  #contact textarea:focus { outline: 2px solid var(--acc); outline-offset: -1px; }
+  #contact input[type=email] { width: 100%; font: inherit; color: var(--ink); background: var(--ground-2);
+    border: var(--hairline); border-radius: 0; padding: 6px 8px; }
+  #contact input[type=email]:focus { outline: 2px solid var(--acc); outline-offset: -1px; }
+  .trap { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+  .err-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+  .credits { border-top: var(--hairline); margin-top: 40px; padding-top: 16px; color: var(--ink-mut); font-size: 12px; max-width: 70ch; }
+  .credits ul { margin: 0; padding-left: 16px; }
+  .credits li { margin-bottom: 4px; }
+  .credits a { color: var(--ink-mut); }
+  .credits a:hover { color: var(--ink); }
+  #err.gentle { font-family: var(--font-sans); font-size: 14px; }
+  @media (max-width: 600px) {
+    .form-grid { grid-template-columns: 1fr; gap: 4px; }
+    .form-grid > .label { padding-top: 14px; }
+  }
+  @media (max-width: 600px) {
+    header.bar { padding: 12px 16px; gap: 12px; }
+    .wrap { padding: 16px 16px 64px; }
+  }
+</style>
+</head>
+<body>
+<header class="bar">
+  <h1>Coming Undone<span>.</span></h1>
+  <span class="ver" id="ver"></span>
+  <span class="tagline">simply split.</span>
+</header>
+<div class="wrap">
+  <div class="panel" id="form">
+    <div class="runs" role="group" aria-label="Where the run happens">
+      <span class="label">Runs:</span>
+      <span class="choice" id="engine-choice">
+        <button data-engine="online">Online</button><button data-engine="local" class="hidden">This computer</button><button data-engine="browser" class="hidden" disabled title="coming later">In your browser<span class="soon" id="browser-soon">later</span></button>
+      </span>
+    </div>
+    <p class="where"><span id="where-text"></span>
+      <span id="online-budget" class="budget"></span>
+      <a href="#" id="look-local" class="hidden">Running Coming Undone on this computer? Look for it.</a>
+      <a href="#" id="contact-open" aria-expanded="false" aria-controls="contact">Get in touch</a></p>
+    <div id="contact" class="hidden">
+      <p>Want it faster, or on your own songs at scale? I'd love to hear what you're making.</p>
+      <form id="contact-form" novalidate>
+        <div><label class="f" for="c-name">Name</label><input type="text" id="c-name" name="name" autocomplete="name"></div>
+        <div><label class="f" for="c-email">Email</label><input type="email" id="c-email" name="email" autocomplete="email" required></div>
+        <div><label class="f" for="c-making">What are you making?</label><textarea id="c-making" name="message"></textarea></div>
+        <input type="hidden" name="_subject" value="Coming Undone: new message">
+        <div class="trap" aria-hidden="true"><label>Leave this empty <input type="text" name="_gotcha" tabindex="-1" autocomplete="off"></label></div>
+        <div class="row" style="margin-top:2px"><button class="primary" type="submit" id="c-send">Send</button>
+          <span class="hint" id="c-status" role="status"></span></div>
+      </form>
+      <p id="c-thanks" class="hidden">Thank you, I'll write back soon.</p>
+    </div>
+    <div id="drop" tabindex="0" role="button" aria-label="Choose an audio file">
+      <div class="drop-main">Drop an audio file, or click to choose</div>
+      <div class="drop-sub">mp3, wav, m4a, flac</div>
+    </div>
+    <div id="wave-box" class="hidden">
+      <div class="wave-head">
+        <span class="filename" id="fname"></span><span class="mono mut" id="fmeta"></span>
+        <span class="spacer"></span><button class="ghost small" id="change">change file</button>
+      </div>
+      <canvas id="wave" height="96"></canvas>
+      <div class="wave-foot mono mut"><span id="sel-text">whole song · drag across the waveform to transcribe only a section</span>
+        <span class="spacer"></span><button class="ghost small hidden" id="sel-clear">whole song</button></div>
+    </div>
+    <input type="file" id="file" accept="audio/*,.mp3,.wav,.m4a,.flac,.aiff" class="hidden">
+    <div class="or" id="or"><span>or paste a link</span></div>
+    <input type="text" id="url" placeholder="https://www.youtube.com/watch?v=..." aria-label="Link to audio">
+
+    <div class="form-grid">
+      <span class="label">Stems</span>
+      <div><span class="choice" data-for="model">
+          <button data-v="htdemucs">4 stems</button><button data-v="htdemucs_6s">6 stems</button></span>
+        <div class="hint" id="model-hint"></div></div>
+      <input type="hidden" id="model" value="htdemucs">
+
+      <span class="label">Transcriber</span>
+      <div><span class="choice" data-for="backend" id="backend-choice"></span>
+        <div class="hint" id="backend-hint"></div></div>
+      <input type="hidden" id="backend" value="muscriptor">
+
+      <span class="label">Tracks</span>
+      <div class="chips">
+        <label class="chip"><input type="checkbox" id="vocals" checked><span>vocals as melody</span></label>
+        <label class="chip"><input type="checkbox" id="monovocals"><span>one voice melody</span></label>
+        <label class="chip"><input type="checkbox" id="monobass"><span>one note bass</span></label>
+      </div>
+
+      <span class="label">Cleanup</span>
+      <div>
+        <div class="chips">
+          <label class="chip"><input type="checkbox" id="cleanup" checked><span>clean up notes</span></label>
+          <label class="chip dep"><input type="checkbox" id="deoverlap" checked><span>de-overlap</span></label>
+          <label class="chip dep"><input type="checkbox" id="trim" checked><span>trim silence</span></label>
+          <label class="chip dep"><input type="checkbox" id="legato"><span>legato</span></label>
+          <label class="chip"><input type="checkbox" id="strip" checked><span>strip metadata</span></label>
+        </div>
+        <div class="nums dep-nums">
+          <label class="num">notes at most <input type="number" id="maxbeats" value="2" step="0.5" min="0"> beats</label>
+          <label class="num">quieter than <input type="number" id="velfloor" value="15" step="1" min="0" max="127"> dropped</label>
+          <label class="num" id="legatogap-row">legato closes gaps up to <input type="number" id="legatogap" value="0.25" step="0.25" min="0"> beats</label>
+        </div>
+      </div>
+
+      <span class="label">Tempo</span>
+      <label class="num"><input type="number" id="tempo" placeholder="auto" step="0.01" min="20" max="400"> <span id="tempo-unit">BPM</span>
+        <span class="mut">empty: detected from the audio</span></label>
+
+      <span class="label">Meter</span>
+      <div><span class="choice" data-for="meter">
+          <button data-v="4/4">4/4</button><button data-v="3/4">3/4</button><button data-v="6/8">6/8</button><button data-v="9/8:2+2+2+3">9/8 (2+2+2+3)</button><button data-v="12/8">12/8</button></span>
+        <div class="hint" id="meter-hint"></div></div>
+      <input type="hidden" id="meter" value="4/4">
+
+      <span class="label">Grid</span>
+      <div>
+        <div class="chips"><label class="chip"><input type="checkbox" id="snap"><span>snap notes to the grid</span></label></div>
+        <div class="nums">
+          <label class="num">bar one on beat <input type="number" id="downbeat" placeholder="auto" step="1" min="1" max="4">
+            <span class="mut">empty: guessed</span></label>
+        </div>
+      </div>
+
+      <span class="label">Section</span>
+      <div>
+        <div class="nums" style="margin:0">
+          <label class="num">from <input type="number" id="start" placeholder="0" step="0.1" min="0"> s</label>
+          <label class="num">for <input type="number" id="duration" placeholder="all" step="0.1" min="0"> s</label>
+        </div>
+        <div class="hint" id="section-hint"></div>
+      </div>
+
+      <span class="label link-only hidden">Link audio</span>
+      <div class="link-only hidden"><span class="choice" data-for="audiofmt">
+          <button data-v="native">original</button><button data-v="mp3">mp3 192k</button></span>
+        <div class="hint">original skips a second lossy encode</div></div>
+      <input type="hidden" id="audiofmt" value="native">
+
+      <span></span>
+      <div class="row" style="margin-top:8px">
+        <button class="primary" id="go" disabled>Transcribe</button>
+        <button class="ghost hidden" id="again">New file</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- progress -->
+  <div class="panel hidden" id="prog-panel">
+    <h2><span class="spin" id="spin"></span>Progress</h2>
+    <div id="log"></div>
+  </div>
+
+  <!-- error -->
+  <div class="panel hidden" id="err-panel">
+    <h2 id="err-title">Failed</h2>
+    <div class="err-box" id="err"></div>
+    <div class="err-actions" id="err-actions"></div>
+  </div>
+
+  <!-- results -->
+  <div id="results" class="hidden">
+    <div class="panel">
+      <div class="result-head">
+        <h2 style="margin:0">Result</h2>
+        <span class="choice" data-for="view" id="view-choice"><button data-v="together">together</button><button data-v="parts">by part</button></span>
+        <span class="spacer"></span><span class="dl" id="dl"></span>
+      </div>
+      <input type="hidden" id="view" value="together">
+      <div class="roll-box" id="roll-box"><canvas id="roll"></canvas><div id="roll-head"></div></div>
+      <div class="legend mono" id="legend"></div>
+      <div id="parts" class="hidden"><div id="parts-head"></div></div>
+      <div class="player">
+        <button class="primary" id="pl-play">Play</button>
+        <span class="choice" id="pl-stems"></span>
+        <span class="mono mut" id="pl-time"></span>
+      </div>
+      <audio id="pl-audio" preload="auto"></audio>
+      <div class="note" id="timing-note"></div>
+    </div>
+
+    <div class="panel hidden" id="src-panel">
+      <h2>Source</h2>
+      <div id="src-title" style="font-weight:700"></div>
+      <div id="src-meta" class="hint"></div>
+      <div class="note">Kept in manifest.json with the output.</div>
+    </div>
+
+    <div class="panel">
+      <h2>Tempo</h2>
+      <div class="tempo-hero">
+        <span class="bpm" id="bpm">–</span><span class="bpm-unit" id="bpm-unit">BPM</span>
+        <span class="pill" id="tempo-src"></span>
+        <span class="pill" id="tempo-from"></span>
+      </div>
+      <div class="alts hidden" id="bar-box">
+        <div class="hint" id="bar-info"></div>
+        <div class="alt-btns">
+          <button class="alt" id="bar-earlier">&larr; one a beat earlier</button>
+          <button class="alt" id="bar-later">one a beat later &rarr;</button>
+        </div>
+      </div>
+      <div class="alts hidden" id="alts">
+        <div class="hint">
+          Half or double time? Pick another tempo: notes never move.
+        </div>
+        <div class="alt-btns" id="alt-btns"></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Tracks</h2>
+      <div id="warns"></div>
+      <table>
+        <thead><tr><th>Track</th><th>Notes</th><th>Median dur</th><th>Silence</th><th>Polyphony</th><th>Cleanup</th></tr></thead>
+        <tbody id="tracks"></tbody>
+      </table>
+    </div>
+
+  </div>
+
+  <!-- the models behind every engine, and their licences -->
+  <footer class="credits" id="credits">
+    <h2>Models</h2>
+    <ul>
+      <li>Stems: <a href="https://github.com/facebookresearch/demucs" target="_blank" rel="noreferrer noopener">htdemucs</a>
+        (Défossez et al., Meta). Research-only weights. In your browser: the ONNX export by
+        <a href="https://huggingface.co/timcsy/demucs-web-onnx" target="_blank" rel="noreferrer noopener">timcsy</a>.</li>
+      <li>Notes: <a href="https://github.com/spotify/basic-pitch" target="_blank" rel="noreferrer noopener">basic-pitch</a>
+        (Spotify), Apache-2.0.</li>
+      <li>Notes: <a href="https://huggingface.co/MuScriptor" target="_blank" rel="noreferrer noopener">MuScriptor</a>
+        (Mirelo and Kyutai; medium online and on this computer, small in your browser when this computer serves the page). Code MIT, weights CC BY-NC 4.0:
+        non-commercial use only.</li>
+      <li>Drums: <a href="https://github.com/pier-maker92/ADT_STR" target="_blank" rel="noreferrer noopener">ADT_STR</a>
+        (Melucci, Merialdo, Akama 2026), code and weights CC BY-SA 4.0. In your browser it runs an int8 copy of the
+        weights, shared under the same licence.</li>
+    </ul>
+  </footer>
+</div>
+
+<script type="module">
+import { EngineError, findLocal, localEngine, onlineEngine, onlineGpuSeconds, onlineRunsPerDay, ONLINE_BUDGET } from "./js/engines.js";
+import { seekable } from "./vendor/design/playhead.js";
+
+// ---- config: every outside address the page uses, in one place
+const params = new URLSearchParams(location.search);
+// the page's own files, relative to it, so it also works under a subpath (GitHub Pages)
+const here = p => new URL(p, document.baseURI).href;
+const CONFIG = {
+  // the Hugging Face Space behind "Online"; ?space=<id or URL> overrides it (a local Gradio)
+  space: params.get("space") || "swwallowws/coming-undone",
+  // where "This computer" looks for the local server (stemscribe-web)
+  localBases: ["http://localhost:8002"],
+  // the longest section one online run takes: space/split.py MAX_SECONDS
+  onlineMaxSeconds: 30,
+  // the contact form's endpoint (Formspree)
+  contactEndpoint: "https://formspree.io/f/mrpbjkak",
+  // Gradio's JavaScript client, vendored (vendor/gradio-client/VERSION)
+  gradioClient: here("./vendor/gradio-client/browser.js"),
+  // "In your browser" in the switch; false hides it. It turns on when its models answer
+  // (a models.json at browser.models, else at publicModels); otherwise it stays marked
+  // as coming later.
+  showBrowserEngine: true,
+  // the public model repo (models-dist/, uploaded by out/upload_models.py), used when
+  // the page's own server has no /browser-models/ (GitHub Pages). To pin it, put the
+  // upload's commit sha in place of "main".
+  publicModels: "https://huggingface.co/swwallowws/coming-undone-browser-models/resolve/89a917875e272bb492311624d7536b5e27604a64/",
+  // the browser engine's bundle (browser/build.mjs) and its settings; ?models=<url>
+  // points at another model folder, ?ep=webgpu|wasm forces a backend
+  browserEngine: here("./vendor/browser-engine/engine.js"),
+  browser: {
+    models: params.get("models") || here("./browser-models/"),
+    ortWasm: "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.30.0/dist/",
+    basicPitch: here("./vendor/browser-engine/basic-pitch/model.json"),
+    ep: params.get("ep") || "auto",
+  },
+};
+
+const $ = id => document.getElementById(id);
+const STEM_ORDER = ["vocals", "drums", "bass", "other", "guitar", "piano"];
+const TRACK_COLOR = { melody: "var(--melody)", bass: "var(--bass)", comping: "var(--comping)" };
+let file = null;
+
+// ---- engines: where the run happens
+const ONLINE_BACKENDS = [{ name: "muscriptor", noncommercial: true }, { name: "basic-pitch", noncommercial: false }];
+const engines = { online: onlineEngine(CONFIG.space, () => import(CONFIG.gradioClient)), local: null, browser: null };
+let engine = "online", localBackends = null, browserBackends = null, browserInfo = null;
+const MB = b => `${Math.round(b / 1e6)} MB`;
+const WHERE = {
+  online: `Runs online, on a free GPU at Hugging Face. Your file goes there for the run and is deleted within the hour. ` +
+          `Up to ${CONFIG.onlineMaxSeconds} s a run.`,
+  local: () => `Runs on this computer, through Coming Undone at ${engines.local.base ? engines.local.base.replace(/^https?:\/\//, "") : location.host}. ` +
+              `Nothing leaves your machine: whole songs, full quality.`,
+  browser: () => {
+    const i = browserInfo || {};
+    // + about 30 MB of runtime: ONNX Runtime's wasm (28 MB) and the engine (2 MB)
+    const size = i.plan ? (i.plan.toDownload > 0
+      ? `The first run downloads about ${MB(i.plan.toDownload + 30e6)} (models and runtime), kept for next time.`
+      : "Its models are already downloaded.") : "";
+    const speed = i.probe && !i.probe.webgpu
+      ? " No WebGPU in this browser, so it runs on the CPU: about 2.5 times slower."
+      : " Desktop Chrome or Edge with WebGPU: about 10 s per 20 s of audio.";
+    return `Runs right here in your browser: nothing leaves your machine. ${size}${speed} ` +
+           `Simpler than the other two: 4 stems, no beat grid.`;
+  },
+};
+
+// "In your browser": the engine's bundle (1.6 MB) loads on the first run; until then
+// only its models' manifest is checked, so the page stays light.
+let browserMod = null;
+const loadBrowser = async () => (browserMod ||= await import(CONFIG.browserEngine));
+function browserEngine() {
+  return {
+    id: "browser",
+    async run(input, opts, on) {
+      const mod = await loadBrowser();
+      try {
+        return await mod.createBrowserEngine(CONFIG.browser).run(input, opts, on);
+      } catch (e) {
+        throw e instanceof EngineError ? e : new EngineError(e.kind || "failed", e.message || String(e), e.detail || (e.stack || ""));
+      }
+    },
+  };
+}
+// What the first run downloads, from the models' manifest and what Cache Storage
+// already holds (the engine caches under the same name and URLs: browser/src/models.js).
+async function browserPlan(m, base) {
+  const url = e => new URL(e.url || e.file, base).href;
+  let cache = null;
+  try { cache = await caches.open("coming-undone-models-v1"); } catch (_) { /* none */ }
+  const have = async u => { try { return !!(cache && await cache.match(u)); } catch (_) { return false; } };
+  const need = [m.htdemucs, m.adt.encoder, m.adt.decoder];
+  let toDownload = 0;
+  for (const e of need) if (!(await have(url(e)))) toDownload += e.bytes;
+  const ms = m.muscriptorSmall;
+  return { toDownload, muscriptorSmall: ms ? ms.bytes : null,
+           muscriptorSmallCached: ms ? await have(new URL(ms.files.lm, new URL(ms.dir, base)).href) : false };
+}
+async function lookForBrowser() {
+  if (!CONFIG.showBrowserEngine) return;
+  try {
+    // this server's own models first (stemscribe-web --browser-models), then the public
+    // repo; ?models= names one folder and nothing else
+    const bases = params.get("models") ? [CONFIG.browser.models] : [CONFIG.browser.models, CONFIG.publicModels];
+    let m = null, base = null;
+    for (const b of bases) {
+      base = new URL(b, location.href).href;
+      try {
+        const r = await fetch(new URL("models.json", base));
+        if (r.ok) { m = await r.json(); break; }
+      } catch (_) { /* not here */ }
+    }
+    if (!m) return;
+    CONFIG.browser.models = base;
+    let webgpu = false;
+    try { webgpu = !!(navigator.gpu && await navigator.gpu.requestAdapter()); } catch (_) { /* no */ }
+    browserInfo = { probe: { webgpu }, plan: await browserPlan(m, base) };
+    engines.browser = browserEngine();
+    // MuScriptor small's weights are gated and CC-BY-NC, so the public repo leaves them
+    // out: there the choice shows, switched off, and points to the other engines
+    browserBackends = [
+      { name: "basic-pitch", noncommercial: false, hint: "Apache-2.0, fast, safe for commercial use" +
+        (m.muscriptorSmall ? "" : ". MuScriptor's better notes: Online or on This computer") },
+      m.muscriptorSmall ? { name: "muscriptor-small", noncommercial: true,
+        hint: `better notes, slower: about 5 s more per part with WebGPU; +${MB(browserInfo.plan.muscriptorSmall)} ` +
+              `download${browserInfo.plan.muscriptorSmallCached ? " (already here)" : ""}. CC-BY-NC weights, so non-commercial use only` }
+        : { name: "muscriptor-small", off: "MuScriptor runs Online or on This computer" },
+    ];
+    const b = $("engine-choice").querySelector('[data-engine="browser"]');
+    b.disabled = false; b.title = ""; $("browser-soon").remove();
+    if (remembered() === "browser") selectEngine("browser");
+  } catch (_) { /* no models here: stays "later" */ }
+}
+const remember = v => { try { localStorage.setItem("cu-engine", v); } catch (_) {} };
+const remembered = () => { try { return localStorage.getItem("cu-engine"); } catch (_) { return null; } };
+
+function selectEngine(id) {
+  if (id === "local" && !engines.local) id = "online";
+  if (id === "browser" && !engines.browser) id = "online";
+  engine = id;
+  document.querySelectorAll("#engine-choice button").forEach(b => b.classList.toggle("on", b.dataset.engine === id));
+  $("where-text").textContent = id === "local" ? WHERE.local() : id === "browser" ? WHERE.browser() : WHERE.online;
+  setBackends(id === "local" ? localBackends : id === "browser" ? browserBackends : ONLINE_BACKENDS);
+  // links are fetched by the local server; online and in-browser runs take files
+  const online = id !== "local";
+  if (online && $("url").value.trim()) { $("url").value = ""; showLinkOnly(false); }
+  if (!file) { $("or").classList.toggle("hidden", online); $("url").classList.toggle("hidden", online); }
+  $("section-hint").textContent = id === "online"
+    ? `Online takes up to ${CONFIG.onlineMaxSeconds} s: the section you pick, or the first ${CONFIG.onlineMaxSeconds} s.` : "";
+  showBudget();
+  refresh();
+}
+
+// How many online runs a day's free GPU time holds, for this length and these options
+// (engines.js mirrors the Space's budget). Runs from this page count as signed out at
+// Hugging Face: its requests carry no account, so the signed-out quota is the one.
+function onlineSeconds() {
+  const max = CONFIG.onlineMaxSeconds;
+  if (!file || !total) return max;
+  const a = parseFloat($("start").value) || 0, d = parseFloat($("duration").value);
+  const left = Math.max(0, total - a);
+  return Math.min(max, d > 0 ? Math.min(d, left) : left);
+}
+function showBudget() {
+  const el = $("online-budget");
+  if (engine !== "online") { el.textContent = ""; return; }
+  const opts = { backend: $("backend").value, demucs_model: $("model").value, include_vocals_melody: $("vocals").checked };
+  const secs = Math.max(1, Math.round(onlineSeconds()));
+  const runs = s => onlineRunsPerDay(onlineGpuSeconds(s, opts), ONLINE_BUDGET.quota.signedOut);
+  const n = runs(secs);
+  el.textContent = `Online: about ${n} free run${n === 1 ? "" : "s"} a day at ${secs} s.` +
+    (secs > 10 && runs(10) > n ? " Shorter sections leave room for more." : "");
+}
+document.querySelectorAll("#engine-choice button").forEach(b => b.onclick = () => {
+  if (b.disabled) return;
+  selectEngine(b.dataset.engine); remember(b.dataset.engine);
+});
+$("engine-choice").querySelector('[data-engine="browser"]').classList.toggle("hidden", !CONFIG.showBrowserEngine);
+
+function useLocal(found, prefer) {
+  engines.local = localEngine(found.base);
+  localBackends = found.config.backends;
+  $("ver").textContent = "v" + found.config.version;
+  $("engine-choice").querySelector('[data-engine="local"]').classList.remove("hidden");
+  $("look-local").classList.add("hidden");
+  selectEngine(prefer || remembered() === "local" ? "local" : engine);
+}
+
+// Chrome asks before a public page may reach localhost. Only look on our own when that
+// is already allowed (or it is not a question here); otherwise wait for a click.
+async function localAccess() {
+  if (/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname)) return "granted";
+  for (const name of ["local-network-access", "loopback-network"]) {
+    try { return (await navigator.permissions.query({ name })).state; } catch (_) { /* unknown name */ }
+  }
+  return "granted";                        // browsers without the question just connect
+}
+async function lookForLocal(asked) {
+  const here = await findLocal([""], 1500);      // this page served by the local server itself
+  if (here) return useLocal(here, true);
+  if (!asked) {
+    const state = await localAccess();
+    if (state === "prompt") { $("look-local").classList.remove("hidden"); return; }
+    if (state === "denied") return;
+  }
+  const found = await findLocal(CONFIG.localBases);
+  if (found) return useLocal(found, asked);
+  if (asked) $("look-local").textContent = "Not found on localhost:8002. Start it with stemscribe-web, then look again.";
+}
+$("look-local").onclick = e => { e.preventDefault(); lookForLocal(true); };
+
+// ---- the transcribers the chosen engine has
+const MODEL_HINT = {
+  htdemucs: 'drums, bass, vocals, other: guitars land in "other"',
+  htdemucs_6s: "adds guitar and piano; slower, and two guitars stay together",
+};
+function setBackends(list) {
+  const box = $("backend-choice");
+  box.innerHTML = list.map(b => b.off ? `<button data-v="${esc(b.name)}" disabled title="${esc(b.off)}">${esc(b.name)}</button>`
+    : `<button data-v="${esc(b.name)}">${esc(b.name)}</button>`).join("");
+  if (!list.some(b => !b.off && b.name === $("backend").value)) $("backend").value = list[0].name;
+  choiceHooks.backend = () => {
+    const b = list.find(x => x.name === $("backend").value);
+    $("backend-hint").textContent = b && b.hint ? b.hint : b && b.noncommercial
+      ? "best quality; CC-BY-NC weights, so non-commercial use only" : "Apache-2.0, fast, safe for commercial use";
+    showBudget();
+  };
+  wireChoices();
+  choiceHooks.backend();
+}
+
+// ---- joined option buttons: each writes its value into the hidden input it names
+// The tempo counts the meter's denominator note (grid.py): eighths in x/8. The MIDI's
+// own tempo counts quarters, so say which one this number is.
+const PULSE = { 1: "wholes", 2: "halves", 4: "", 8: "eighths", 16: "sixteenths", 32: "32nds" };
+const bpmUnit = (meter) => {
+  const w = PULSE[String(meter || "4/4").split(":")[0].split("/")[1]];
+  return w ? `BPM (${w})` : "BPM";
+};
+const choiceHooks = {
+  model: () => { $("model-hint").textContent = MODEL_HINT[$("model").value]; showBudget(); },
+  meter: () => {
+    const m = $("meter").value;
+    $("tempo-unit").textContent = bpmUnit(m);
+    $("meter-hint").textContent = m.split(":")[0].endsWith("/8")
+      ? "the tempo counts eighths; the MIDI file writes it in quarters (half the number)" : "";
+    $("downbeat").max = m.split(":")[0].split("/")[0];      // bar one: 1 to the numerator
+  },
+};
+function wireChoices() {
+  document.querySelectorAll(".choice[data-for]").forEach(group => {
+    const input = $(group.dataset.for);
+    const mark = () => group.querySelectorAll("button").forEach(b => b.classList.toggle("on", b.dataset.v === input.value));
+    group.querySelectorAll("button").forEach(b => b.onclick = () => {
+      input.value = b.dataset.v; mark();
+      (choiceHooks[group.dataset.for] || (() => {}))();
+    });
+    mark();
+  });
+}
+wireChoices();
+choiceHooks.model();
+choiceHooks.meter();
+
+// ---- cleanup is the master switch: its parts and numbers follow it
+function syncCleanup() {
+  const on = $("cleanup").checked;
+  document.querySelectorAll(".chip.dep").forEach(c => c.classList.toggle("off", !on));
+  document.querySelectorAll(".dep-nums").forEach(c => c.classList.toggle("off", !on));
+  $("legatogap-row").classList.toggle("hidden", !$("legato").checked);
+}
+$("cleanup").onchange = syncCleanup;
+$("legato").onchange = syncCleanup;
+syncCleanup();
+
+// ---- picking a file: the drop zone becomes its waveform
+const drop = $("drop");
+drop.onclick = () => $("file").click();
+drop.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); $("file").click(); } };
+drop.ondragover = e => { e.preventDefault(); drop.classList.add("over"); };
+drop.ondragleave = () => drop.classList.remove("over");
+drop.ondrop = e => {
+  e.preventDefault(); drop.classList.remove("over");
+  if (e.dataTransfer.files.length) setFile(e.dataTransfer.files[0]);
+};
+$("file").onchange = e => { if (e.target.files.length) setFile(e.target.files[0]); };
+$("change").onclick = () => $("file").click();
+
+const fmtT = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
+let peaks = null, total = 0, sel = null;
+
+async function setFile(f) {
+  file = f;
+  $("url").value = "";           // a file and a URL are alternatives
+  showLinkOnly(false);
+  drop.classList.add("hidden"); $("or").classList.add("hidden"); $("url").classList.add("hidden");
+  $("wave-box").classList.remove("hidden");
+  $("fname").textContent = f.name;
+  $("fmeta").textContent = ` ${(f.size / 1048576).toFixed(1)} MB · reading…`;
+  sel = null; peaks = null; total = 0; drawWave();
+  refresh(); showBudget();
+  try {
+    const ctx = new (window.OfflineAudioContext || window.webkitOfflineAudioContext)(1, 2, 44100);
+    const buf = await ctx.decodeAudioData(await f.arrayBuffer());
+    total = buf.duration;
+    peaks = computePeaks(buf, 1200);
+    $("fmeta").textContent = ` ${fmtT(total)} · ${(f.size / 1048576).toFixed(1)} MB`;
+  } catch (e) {
+    $("fmeta").textContent = ` ${(f.size / 1048576).toFixed(1)} MB · no preview (the transcription still works)`;
+  }
+  drawWave(); showBudget();
+}
+
+function computePeaks(buf, n) {
+  const chans = [...Array(buf.numberOfChannels).keys()].map(c => buf.getChannelData(c));
+  const step = Math.max(1, Math.floor(buf.length / n)), out = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    let m = 0;
+    for (const d of chans) for (let j = i * step, e = Math.min(d.length, j + step); j < e; j += 16) m = Math.max(m, Math.abs(d[j]));
+    out[i] = m;
+  }
+  return out;
+}
+
+// the tokens are light-dark() pairs, which a canvas can't read: let an element resolve them
+function resolved(token) {
+  const el = document.createElement("span");
+  el.style.color = `var(${token})`; document.body.appendChild(el);
+  const c = getComputedStyle(el).color; el.remove();
+  return c;
+}
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", drawWave);
+
+// the waveform: thin vertical strokes in the accent; the chosen section full strength, the rest faint
+function drawWave() {
+  const cv = $("wave"), dpr = devicePixelRatio || 1, w = cv.clientWidth, h = 96;
+  if (!w) return;
+  cv.width = w * dpr; cv.height = h * dpr;
+  const g = cv.getContext("2d"); g.scale(dpr, dpr); g.clearRect(0, 0, w, h);
+  const acc = resolved("--acc"), line = resolved("--line");
+  g.fillStyle = line; g.fillRect(0, h / 2, w, 1);
+  if (!peaks) return;
+  const cols = Math.floor(w / 3);
+  for (let x = 0; x < cols; x++) {
+    const p = peaks[Math.floor((x / cols) * peaks.length)], t = (x / cols) * total;
+    const inside = !sel || (t >= sel[0] && t <= sel[1]);
+    g.globalAlpha = inside ? 1 : 0.22;
+    g.fillStyle = acc;
+    const a = Math.max(1, p * (h / 2 - 4));
+    g.fillRect(x * 3, h / 2 - a, 2, a * 2);
+  }
+  g.globalAlpha = 1;
+}
+addEventListener("resize", drawWave);
+
+// drag to choose a section; it fills start and duration, which stay editable
+let dragAt = null;
+const timeAt = e => {
+  const r = $("wave").getBoundingClientRect();
+  return Math.min(Math.max((e.clientX - r.left) / r.width, 0), 1) * total;
+};
+$("wave").onpointerdown = e => { if (!peaks) return; dragAt = timeAt(e); $("wave").setPointerCapture(e.pointerId); };
+$("wave").onpointermove = e => {
+  if (dragAt === null) return;
+  const t = timeAt(e);
+  if (Math.abs(t - dragAt) > total / 200) { sel = [Math.min(t, dragAt), Math.max(t, dragAt)]; showSel(); }
+};
+$("wave").onpointerup = () => { dragAt = null; };
+function showSel() {
+  if (sel) {
+    $("start").value = sel[0].toFixed(1);
+    $("duration").value = (sel[1] - sel[0]).toFixed(1);
+    $("sel-text").textContent = `${fmtT(sel[0])} to ${fmtT(sel[1])} · ${Math.round(sel[1] - sel[0])} s`;
+  } else {
+    $("start").value = ""; $("duration").value = "";
+    $("sel-text").textContent = "whole song · drag across the waveform to transcribe only a section";
+  }
+  $("sel-clear").classList.toggle("hidden", !sel);
+  drawWave(); showBudget();
+}
+$("sel-clear").onclick = () => { sel = null; showSel(); };
+const fromInputs = () => {
+  if (!peaks) return;
+  const a = parseFloat($("start").value) || 0, d = parseFloat($("duration").value);
+  sel = (a > 0 || d > 0) ? [a, d > 0 ? Math.min(total, a + d) : total] : null;
+  $("sel-clear").classList.toggle("hidden", !sel);
+  drawWave(); showBudget();
+};
+$("start").oninput = fromInputs;
+$("duration").oninput = fromInputs;
+$("vocals").addEventListener("change", showBudget);
+
+// ---- a link instead of a file
+function showLinkOnly(on) { document.querySelectorAll(".link-only").forEach(e => e.classList.toggle("hidden", !on)); }
+$("url").oninput = () => {
+  const has = !!$("url").value.trim();
+  if (has) { file = null; $("file").value = ""; }
+  showLinkOnly(has);
+  refresh();
+};
+
+function refresh() {
+  const u = $("url").value.trim();
+  const ok = !!file || /^https?:\/\/\S+$/i.test(u);
+  $("go").disabled = !ok;
+  $("go").textContent = (!file && u) ? "Fetch and transcribe" : "Transcribe";
+}
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const numOr = (id, d) => $(id).value === "" ? d : parseFloat($(id).value);
+
+// ---- run: the same options for every engine; each sends what its backend takes
+const numOrNull = (id, parse = parseFloat) => $(id).value === "" ? null : parse($(id).value);
+function collectOptions() {
+  const mono = [];
+  if ($("monobass").checked) mono.push("bass");
+  if ($("monovocals").checked) mono.push("vocals");
+  return {
+    audio_format: $("audiofmt").value,
+    backend: $("backend").value,
+    demucs_model: $("model").value,
+    include_vocals_melody: $("vocals").checked,
+    mono_stems: mono,
+    cleanup: $("cleanup").checked,
+    de_overlap: $("deoverlap").checked,
+    trim_silence: $("trim").checked,
+    strip_metadata: $("strip").checked,
+    max_duration_beats: numOr("maxbeats", 2),
+    velocity_floor: numOr("velfloor", 15),
+    legato: $("legato").checked,
+    legato_max_gap_beats: numOr("legatogap", 0.25),
+    tempo: numOrNull("tempo"),
+    meter: $("meter").value,
+    downbeat: numOrNull("downbeat", v => parseInt(v, 10)),
+    snap: $("snap").checked,
+    start: numOrNull("start"),
+    duration: numOrNull("duration"),
+  };
+}
+
+function logLine(d) {
+  const line = document.createElement("div");
+  line.innerHTML = `<span class="stage">${esc(d.stage)}</span><span>${esc(d.message)}</span>`;
+  $("log").querySelectorAll(".now").forEach(x => x.classList.remove("now"));
+  line.classList.add("now");
+  $("log").appendChild(line);
+  $("log").scrollTop = $("log").scrollHeight;
+}
+
+$("go").onclick = async () => {
+  const url = $("url").value.trim();
+  if (!file && !url) return;
+  $("go").disabled = true;
+  $("results").classList.add("hidden");
+  $("err-panel").classList.add("hidden");
+  $("prog-panel").classList.remove("hidden");
+  $("spin").classList.remove("hidden");
+  $("log").textContent = "";
+  try {
+    const run = await engines[engine].run({ file, url }, collectOptions(), logLine);
+    if (params.has("debug")) window.__cuLastRun = run;    // for browser/verify
+    render(run);
+    $("spin").classList.add("hidden");
+    $("again").classList.remove("hidden");
+    $("results").classList.remove("hidden");
+  } catch (e) {
+    fail(e);
+  }
+};
+
+// A failure says what happened and what to do next. Running out of online time is the
+// expected one: it points at the engines that do not use it.
+function fail(e) {
+  $("spin").classList.add("hidden");
+  $("err-panel").classList.remove("hidden");
+  $("go").disabled = false;
+  $("again").classList.remove("hidden");
+  const acts = $("err-actions"); acts.innerHTML = "";
+  const kind = e instanceof EngineError ? e.kind : "failed";
+  $("err").classList.toggle("gentle", kind === "quota" || kind === "unreachable" || kind === "input");
+  if (kind === "quota") {
+    $("err-title").textContent = "Out of free online runs for today";
+    $("err").textContent =
+      "Today's free online runs at Hugging Face are used up for you" + (e.detail ? ` (they come back in ${e.detail})` : "") + ". " +
+      (engines.local ? "You can run it on this computer instead, with no limit. " :
+        "Coming Undone also runs on your own computer, with no limit: start stemscribe-web there and this page finds it. ") +
+      (engines.browser ? "Or run it right in your browser, also with no limit." :
+        CONFIG.showBrowserEngine ? "Running it right in your browser is coming later." : "");
+    if (engines.browser) {
+      const b = document.createElement("button");
+      b.textContent = "Run in your browser";
+      b.onclick = () => { selectEngine("browser"); remember("browser"); $("go").click(); };
+      acts.appendChild(b);
+    }
+    if (engines.local) {
+      const b = document.createElement("button");
+      b.className = "primary"; b.textContent = "Run on this computer";
+      b.onclick = () => { selectEngine("local"); remember("local"); $("go").click(); };
+      acts.appendChild(b);
+    } else {
+      const b = document.createElement("button");
+      b.textContent = "Look for it on this computer";
+      b.onclick = () => lookForLocal(true).then(() => { if (engines.local) { selectEngine("local"); $("err-panel").classList.add("hidden"); } });
+      acts.appendChild(b);
+    }
+    return;
+  }
+  $("err-title").textContent = kind === "unreachable" ? "Not reachable" : kind === "input" ? "One thing first" : "Failed";
+  $("err").textContent = (e && e.message) || String(e);
+  if (e && e.detail && kind !== "input") $("err").textContent += `\n${e.detail}`;
+}
+
+$("again").onclick = () => location.reload();
+
+function render(run) {
+  const res = run.res;
+  const url = p => run.fileUrl(p);
+
+  // source (only for fetched audio)
+  const s = res.source;
+  if (s) {
+    $("src-panel").classList.remove("hidden");
+    $("src-title").textContent = s.title || s.url;
+    const bits = [];
+    if (s.uploader) bits.push(s.uploader);
+    if (s.duration) bits.push(`${Math.floor(s.duration / 60)}:${String(Math.round(s.duration % 60)).padStart(2, "0")}`);
+    if (s.ext) bits.push(s.ext);
+    $("src-meta").innerHTML = esc(bits.join(" · ")) +
+      ` · <a href="${esc(s.url)}" target="_blank" rel="noreferrer noopener">link</a>`;
+  }
+
+  // tempo
+  const t = res.tempo || {};
+  $("bpm").textContent = (t.bpm ?? "–");
+  $("tempo-src").textContent = t.source === "detected" ? "detected" :
+                               t.source === "user" ? "you set this" : "fallback";
+  $("tempo-from").textContent = t.analyzed_stem ? `from ${t.analyzed_stem} stem` : "";
+  $("tempo-from").classList.toggle("hidden", !t.analyzed_stem);
+  // a fitted grid's tempo counts the meter's pulse (eighths in x/8); without one it is quarters
+  $("bpm-unit").textContent = (res.grid || {}).fitted ? bpmUnit(res.grid.meter) : "BPM";
+
+  // bar "one": a guess, so it can be moved a beat at a time (re-stamps, no note moves)
+  const g = res.grid || {};
+  if (g.fitted) {
+    $("bar-box").classList.remove("hidden");
+    const info = () => {
+      $("bar-info").textContent = `Bars start at ${g.first_bar.toFixed(2)}s (grid from ${g.source_track}` +
+        `${g.snapped ? ", notes snapped" : ""}). Bar "one" is a guess` +
+        (g.bar_one_confidence < 0.2 ? " with low confidence: check it." : ".") +
+        (run.shiftBar ? "" : ` To move it, set "bar one on beat" above and run again.`);
+    };
+    info();
+    const move = async (beats) => {
+      try { g.first_bar = (await run.shiftBar(beats)).first_bar; info(); } catch (_) { /* keeps the old one */ }
+    };
+    $("bar-earlier").onclick = () => move(-1);
+    $("bar-later").onclick = () => move(1);
+    $("bar-box").querySelector(".alt-btns").classList.toggle("hidden", !run.shiftBar);
+  }
+
+  const alts = run.restamp ? (t.candidates || []).filter(c => c.ratio !== 1) : [];
+  if (alts.length) {
+    $("alts").classList.remove("hidden");
+    const box = $("alt-btns"); box.innerHTML = "";
+    [{ bpm: t.bpm, ratio: 1 }, ...alts].forEach(c => {
+      const b = document.createElement("button");
+      b.className = "alt" + (c.ratio === 1 ? " active" : "");
+      b.textContent = `${c.bpm.toFixed(2)}${c.ratio === 0.5 ? "  ½×" : c.ratio === 2 ? "  2×" : c.ratio === 1 ? "" : `  ${c.ratio.toFixed(2)}×`}`;
+      b.onclick = async () => {
+        await run.restamp(c.bpm);
+        $("bpm").textContent = c.bpm.toFixed(2);
+        $("tempo-src").textContent = "you set this";
+        [...box.children].forEach(x => x.classList.remove("active"));
+        b.classList.add("active");
+      };
+      box.appendChild(b);
+    });
+  }
+
+  // warnings
+  $("warns").innerHTML = (res.warnings || [])
+    .map(w => `<div class="warn-box">${esc(w)}</div>`).join("");
+
+  // tracks
+  const tb = $("tracks"); tb.innerHTML = "";
+  Object.keys(res.track_map).forEach(name => {
+    const s = res.tracks[name] || {};
+    const before = s.notes_before, after = s.notes_after;
+    const bits = [];
+    if (s.dropped_monophonic) bits.push(`${s.dropped_monophonic} mono`);
+    if (s.extended_legato) bits.push(`${s.extended_legato} legato`);
+    if (s.trimmed_de_overlap) bits.push(`${s.trimmed_de_overlap} de-lap`);
+    if (s.trimmed_duration_cap) bits.push(`${s.trimmed_duration_cap} capped`);
+    const cleanup = s.cleanup === "disabled" ? "off"
+      : bits.length ? `${before} → ${after} (${bits.join(", ")})` : "no change";
+    const pct = v => v != null ? (v * 100).toFixed(0) + "%" : "–";
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td class="tname"><span class="dot" style="background:${TRACK_COLOR[name] || "var(--ink-mut)"}"></span>${esc(name)}</td>
+      <td>${s.note_count ?? "–"}</td>
+      <td>${s.median_duration_after != null ? s.median_duration_after.toFixed(3) + "s" : "–"}</td>
+      <td>${pct(s.silence_ratio_after)}</td>
+      <td>${s.polyphony_after != null ? s.polyphony_after.toFixed(2) : "–"}</td>
+      <td class="hint">${esc(cleanup)}</td>`;
+    tb.appendChild(tr);
+  });
+
+  // one player: pick what to hear; switching keeps the place in the song
+  const sources = [["instrumental", res.instrumental], ...STEM_ORDER.map(s => [s, (res.stems || {})[s]])]
+    .filter(([, p]) => p);
+  const audio = $("pl-audio");
+  $("pl-stems").innerHTML = sources.map(([name, p], i) =>
+    `<button data-src="${esc(url(p))}" class="${i === 0 ? "on" : ""}">${esc(name)}</button>`).join("");
+  $("pl-stems").querySelectorAll("button").forEach(b => b.onclick = () => {
+    const at = audio.currentTime, wasPlaying = !audio.paused;
+    audio.src = b.dataset.src;
+    audio.addEventListener("loadedmetadata", () => { audio.currentTime = at; if (wasPlaying) audio.play(); }, { once: true });
+    $("pl-stems").querySelectorAll("button").forEach(x => x.classList.toggle("on", x === b));
+  });
+  if (sources.length) audio.src = url(sources[0][1]);
+  $("pl-play").onclick = () => { audio.paused ? audio.play() : audio.pause(); };
+  audio.onplay = () => { $("pl-play").textContent = "Pause"; };
+  audio.onpause = () => { $("pl-play").textContent = "Play"; };
+  // a section's MIDI keeps the original file's timeline, its audio starts at 0: the roll starts at the section
+  rollStart = (res.prepared || {}).offset || 0;
+  roll = run.roll; drawLegend(); drawRoll(); followAudio();
+  parts = run.parts; buildParts(run);
+
+  // downloads
+  const dl = $("dl"); dl.innerHTML = "";
+  const link = (label, path, main) => {
+    if (!path) return;
+    const a = document.createElement("a");
+    a.className = "dlbtn" + (main ? " main" : "");
+    a.href = url(path); a.download = ""; a.textContent = label;
+    dl.appendChild(a);
+  };
+  link("MIDI", res.midi, true);
+  link("instrumental", res.instrumental);
+  link("manifest", res.manifest);
+
+  // timing note: the thing that is easy to get wrong downstream
+  const p = res.prepared || {};
+  $("timing-note").textContent = p.offset
+    ? `MIDI is on the original file's timeline: notes are shifted +${p.offset.toFixed(2)}s to match the audio you uploaded.`
+    : `MIDI note times match the uploaded audio exactly.`;
+}
+
+// ---- the piano roll of the finished MIDI (design/roll.md): key bands, one tint per track,
+// softer notes paler, sounding notes full strength, the playhead in the accent
+let roll = null, rollStart = 0;
+const span = () => Math.max(roll.end - rollStart, 1);
+const TRACK_TOKEN = { melody: "--acc", bass: "--ink", comping: "--ink-mut" };
+const toRgb = token => { const c = resolved(token).match(/[\d.]+/g).slice(0, 3).map(Number); return c; };
+const rgbStr = c => `rgb(${c.map(Math.round).join(",")})`;
+const mixRgb = (a, b, p) => rgbStr(a.map((x, i) => x * p + b[i] * (1 - p)));
+
+function drawLegend() {
+  $("legend").innerHTML = (roll ? roll.tracks : []).map(t =>
+    `<span><i style="background:var(${TRACK_TOKEN[t.name] || "--ink-mut"})"></i>${esc(t.name)}</span>`).join("");
+}
+
+function drawRoll() {
+  const cv = $("roll"), dpr = devicePixelRatio || 1, w = cv.clientWidth, h = cv.clientHeight;
+  if (!roll || !w) return;
+  cv.width = w * dpr; cv.height = h * dpr;
+  const g = cv.getContext("2d"); g.scale(dpr, dpr);
+  const ground = toRgb("--ground-2"), band = toRgb("--band"), ink = toRgb("--ink");
+  const ps = roll.tracks.flatMap(t => t.notes.map(n => n[0]));
+  if (!ps.length) return;
+  const lo = Math.min(...ps) - 1, hi = Math.max(...ps) + 1;
+  const rh = h / (hi - lo + 1), xs = w / span(), y = p => h - (p - lo + 1) * rh;
+  g.fillStyle = rgbStr(ground); g.fillRect(0, 0, w, h);
+  g.fillStyle = rgbStr(band);
+  for (let p = lo; p <= hi; p++) if ([1, 3, 6, 8, 10].includes(p % 12)) g.fillRect(0, y(p), w, rh);
+  const now = ($("pl-audio").currentTime || 0) + rollStart, playing = !$("pl-audio").paused;
+  for (const t of roll.tracks) {
+    const col = toRgb(TRACK_TOKEN[t.name] || "--ink-mut");
+    for (const [p, s, e, v] of t.notes) {
+      const on = playing && now >= s && now < e;
+      // roll.md: pitched notes shaded by pitch (40 to 100 percent, low to high), drums by velocity
+      const share = t.name === "drums" ? 0.35 + 0.65 * v / 127 : 0.4 + 0.6 * (p - lo - 1) / Math.max(1, hi - lo - 2);
+      g.fillStyle = on ? rgbStr(col) : mixRgb(col, ground, share);
+      const x = (s - rollStart) * xs, nw = Math.max(1, (e - s) * xs - 1), ny = y(p), nh = Math.max(1, rh - 1);
+      g.fillRect(x, ny, nw, nh);
+      if (on && nh > 2) { g.strokeStyle = rgbStr(ink); g.strokeRect(x + 0.5, ny + 0.5, nw - 1, nh - 1); }
+    }
+  }
+}
+
+// ---- by part: one lane per track, named as the .mid file it downloads as. Each lane is
+// its own roll (roll.md): key bands, notes shaded by pitch across that part's own range,
+// drums one row per kit piece and shaded by velocity. Top to bottom like a score.
+let parts = null;
+const PART_ORDER = ["melody", "comping", "bass", "drums"];
+const partRank = p => p.drum ? 99 : (PART_ORDER.indexOf(p.name) + 1 || PART_ORDER.indexOf("bass"));
+const partsView = () => $("view").value === "parts";
+
+function buildParts(run) {
+  const box = $("parts");
+  box.querySelectorAll(".part-name, .part-roll").forEach(e => e.remove());
+  parts.parts.sort((a, b) => partRank(a) - partRank(b));
+  for (const p of parts.parts) {
+    const name = document.createElement("div");
+    name.className = "part-name";
+    const n = p.notes.length;
+    name.innerHTML = `<a class="filename" download href="${esc(run.partUrl(p.name) || "#")}">${esc(p.file)}</a>` +
+      `<span class="mono mut">${n} ${p.drum ? (n === 1 ? "hit" : "hits") : (n === 1 ? "note" : "notes")}</span>`;
+    const cv = document.createElement("canvas");
+    cv.className = "part-roll";
+    cv.setAttribute("aria-label", `${p.name}: ${n} ${p.drum ? "hits" : "notes"}`);
+    seekable(cv, seekOpts);
+    p.canvas = cv;
+    box.append(name, cv);
+  }
+  drawParts();
+}
+
+function drawParts() {
+  if (!parts || !partsView()) return;
+  const ground = toRgb("--ground-2"), band = toRgb("--band"), acc = toRgb("--acc"), ink = toRgb("--ink");
+  const now = ($("pl-audio").currentTime || 0) + rollStart, playing = !$("pl-audio").paused;
+  const xs0 = 1 / Math.max(parts.end - rollStart, 1);
+  for (const p of parts.parts) {
+    const cv = p.canvas, dpr = devicePixelRatio || 1, w = cv.clientWidth, h = cv.clientHeight;
+    if (!w) continue;
+    cv.width = w * dpr; cv.height = h * dpr;
+    const g = cv.getContext("2d"); g.scale(dpr, dpr);
+    g.fillStyle = rgbStr(ground); g.fillRect(0, 0, w, h);
+    if (!p.notes.length) continue;
+    // rows: every semitone of the part's range, or for drums one row per kit piece
+    const rows = p.drum ? [...new Set(p.notes.map(x => x[0]))].sort((a, b) => a - b) : null;
+    const ps = p.notes.map(x => x[0]);
+    const lo = p.drum ? 0 : Math.min(...ps) - 1, hi = p.drum ? rows.length - 1 : Math.max(...ps) + 1;
+    const row = pitch => p.drum ? rows.indexOf(pitch) : pitch - lo;
+    const rh = h / (hi - lo + 1), y = r => h - (r + 1) * rh, xs = w * xs0;
+    // key bands only where a row is tall enough to read as one; thinner, they are just stripes
+    g.fillStyle = rgbStr(band);
+    if (p.drum) { for (let r = 1; r < rows.length; r += 2) g.fillRect(0, y(r), w, rh); }
+    else if (rh >= 3) for (let q = lo; q <= hi; q++) if ([1, 3, 6, 8, 10].includes(q % 12)) g.fillRect(0, y(q - lo), w, rh);
+    for (const [pitch, s, e, v] of p.notes) {
+      const on = playing && now >= s && now < Math.max(e, s + 0.08);
+      const share = p.drum ? 0.35 + 0.65 * v / 127 : 0.4 + 0.6 * (pitch - lo - 1) / Math.max(1, hi - lo - 2);
+      g.fillStyle = on ? rgbStr(acc) : mixRgb(acc, ground, share);
+      // a drum hit is an onset, not a length: a fixed small mark
+      const x = (s - rollStart) * xs, nw = p.drum ? Math.max(2, Math.min(4, rh)) : Math.max(1, (e - s) * xs - 1);
+      const nh = Math.max(2, rh - 1), ny = Math.min(y(row(pitch)), h - nh);
+      g.fillRect(x, ny, nw, nh);
+      if (on && nh > 2) { g.strokeStyle = rgbStr(ink); g.strokeRect(x + 0.5, ny + 0.5, nw - 1, nh - 1); }
+    }
+  }
+}
+
+// the playhead spans every lane, over the roll column only
+function placePartsHead(frac) {
+  const first = parts && parts.parts[0] && parts.parts[0].canvas;
+  if (!first) return;
+  $("parts-head").style.left = `${first.offsetLeft + frac * first.offsetWidth}px`;
+}
+
+choiceHooks.view = () => {
+  const on = partsView();
+  $("roll-box").classList.toggle("hidden", on);
+  $("legend").classList.toggle("hidden", on);
+  $("parts").classList.toggle("hidden", !on);
+  on ? drawParts() : drawRoll();
+};
+
+// where the playhead is drawn: under the pointer while a drag moves it during playback
+let scrubAt = null;
+function followAudio() {
+  const a = $("pl-audio");
+  if (roll) {
+    const t = scrubAt ?? (a.currentTime || 0), frac = Math.min(1, t / span());
+    $("roll-head").style.left = `${frac * 100}%`;
+    placePartsHead(frac);
+    $("pl-time").textContent = `${fmtT(t)} / ${fmtT(span())}`;
+    if (!a.paused) partsView() ? drawParts() : drawRoll();
+  }
+  requestAnimationFrame(followAudio);
+}
+// a click, tap or drag on the roll or a part's lane moves the playhead there (design
+// playhead.js). Paused, the place moves with the pointer and Play starts from it.
+// Playing, the head follows the pointer and the audio moves once, on release.
+const redraw = () => partsView() ? drawParts() : drawRoll();
+const seekOpts = {
+  duration: () => span(),
+  enabled: () => !!roll,
+  onScrub: t => {
+    const a = $("pl-audio");
+    if (a.paused) { a.currentTime = t; redraw(); }
+    else scrubAt = t;
+  },
+  onSeek: t => { scrubAt = null; $("pl-audio").currentTime = t; redraw(); },
+  onCancel: () => { scrubAt = null; },
+};
+seekable($("roll-box"), seekOpts);
+addEventListener("resize", drawRoll);
+addEventListener("resize", drawParts);
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", drawRoll);
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", drawParts);
+
+// ---- get in touch: a small form, sent to CONFIG.contactEndpoint (Formspree)
+$("contact-open").onclick = e => {
+  e.preventDefault();
+  const open = $("contact").classList.toggle("hidden") === false;
+  $("contact-open").setAttribute("aria-expanded", String(open));
+  if (open) $("c-name").focus();
+};
+$("contact-form").onsubmit = async e => {
+  e.preventDefault();
+  const form = $("contact-form");
+  if (!$("c-email").checkValidity()) {
+    $("c-status").textContent = "An email address, please, so I can write back.";
+    $("c-email").focus();
+    return;
+  }
+  $("c-send").disabled = true;
+  $("c-status").textContent = "sending...";
+  try {
+    const r = await fetch(CONFIG.contactEndpoint, {
+      method: "POST", body: new FormData(form), headers: { Accept: "application/json" },
+    });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    form.classList.add("hidden");
+    $("c-thanks").classList.remove("hidden");
+  } catch (_) {
+    $("c-status").textContent = "That did not go through. Nothing is lost: press Send to try again.";
+    $("c-send").textContent = "Send again";
+  } finally {
+    $("c-send").disabled = false;
+  }
+};
+
+// ---- start: Online by default; This computer joins when it answers, In your browser
+// when its models do
+selectEngine("online");
+lookForLocal(false);
+lookForBrowser();
+</script>
+</body>
+</html>

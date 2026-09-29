@@ -1,0 +1,104 @@
+The bundle in engine.js contains:
+- onnxruntime-web: MIT, Microsoft
+- @tensorflow/tfjs: Apache-2.0, Google
+- @spotify/basic-pitch: Apache-2.0, Spotify (its model in basic-pitch/ too)
+- demucs-web: MIT, timcsy
+- protobufjs: BSD-3-Clause
+- Coming Undone's own code: MIT (see the repository's LICENSE)
+
+The models it downloads are not in this folder and keep their own licences:
+- htdemucs (Defossez et al., Meta): research-only weights, ONNX export by timcsy
+- ADT_STR drums (Melucci, Merialdo, Akama 2026): CC BY-SA 4.0; the int8 files are an
+  adaptation and stay CC BY-SA 4.0
+- MuScriptor small (Mirelo and Kyutai): CC-BY-NC 4.0, non-commercial use only
+
+gm.sf3: the shared General MIDI sounds that every tool which plays MIDI uses,
+so they all sound the same.
+
+It is made from GeneralUser GS 2.0.3 by S. Christian Collins
+(http://www.schristiancollins.com), under the GeneralUser GS License v2.0,
+reproduced in full below. The licence lets
+the bank be used in software projects and modified.
+
+What was changed (make-soundfont.mjs, beside this file, rebuilds it from the
+original GeneralUser.sf2):
+- kept the 128 General MIDI programs of bank 0 and the Standard 1 drum kit
+  (keys 27-87); the GS variation banks and other kits were removed;
+- 38 programs play a close sibling's instrument instead of their own (for
+  example Viola plays the Violin, the pads play Polysynth), listed in the
+  tool's ALIAS table;
+- unlooped samples longer than 2 seconds end there, with a 0.4 s fade;
+- samples longer than a few KB are stored as Ogg Vorbis (SoundFont 3,
+  libvorbis quality 3); short ones stay 16-bit PCM.
+
+This file is our own copy, as the licence asks: please link to
+schristiancollins.com for the original, not to his download files.
+
+----------------------------------------------------------------------------
+
+*** GeneralUser GS v2.0.3 ***
+***      License v2.0     ***
+
+** License of the complete work **
+You may use GeneralUser GS without restriction for your own music creation,
+private or commercial. This SoundFont bank is provided to the community free of
+charge. Please feel free to use it in your software projects, and to modify the
+SoundFont bank or its packaging to suit your needs.
+
+** License of contained samples **
+GeneralUser GS inherits the usage rights of the samples contained within, all of
+which allow full use in music production, including the ability to make profit
+from musical recordings created with GeneralUser GS.
+
+Many of the samples are original, but some were taken from other banks freely
+(and legally) available on the Internet from various SoundFont websites. Because
+GeneralUser GS originated as a personal project with no intention for
+publication, I cannot be 100% sure where all of the samples originated, although
+I do know that none of them came from commercially published SoundFont packages
+or sample CDs. Regardless, many "free" SoundFonts available on the web may
+indeed contain samples of questionable origin. My understanding of the
+copyrights of all samples is only as good as the information provided by the
+original sources. If you become aware of any restricted samples being used in
+GeneralUser GS, please let me know so I can replace them.
+
+This uncertainty may concern you if you intend to use GeneralUser GS in a
+commercial software product. That being said, I have never received any
+complaint regarding sample ownership since I published the original GeneralUser
+GS back in 2000, and as far as I am aware, neither have any of the companies
+creating commercial software products using GeneralUser GS.
+
+** More info **
+If you plan to feature GeneralUser GS on your own website, please do not link
+directly to my download files. Either link to my website, or provide your own
+local copy instead.
+
+I hope you enjoy GeneralUser GS! This SoundFont bank is the product of many
+years of hard work.
+
+You can find updates to GeneralUser GS and more of my virtual instruments at:
+http://www.schristiancollins.com
+
+I can be reached via the contact page on my website here:
+https://www.schristiancollins.com/contact
+
+Thank you!
+-~Chris
+
+The player for the shared soundfont (../gm.sf3): one build of spessasynth for
+every tool that plays MIDI, vendored so nothing loads from a CDN at view time.
+sync.sh <project> --sound copies this folder to vendor/design/sound/spessasynth/.
+spessasynth_lib.min.d.ts is ours: types for the calls the tools make.
+
+spessasynth_lib 4.3.14, spessasynth_core 4.3.22 and stb-vorbis 0.0.6, all by
+spessasus, all under the Apache License 2.0 (see LICENSE in this folder).
+https://github.com/spessasus/spessasynth_lib
+
+Files:
+- spessasynth_lib.min.js: spessasynth_lib's dist/index.js bundled with its
+  dependencies into one ES module (esbuild --bundle --format=esm --minify).
+- spessasynth_processor.min.js: spessasynth_lib's dist file, unchanged.
+- spessasynth_lib.min.d.ts: hand-written types for the part of the API in use.
+
+To rebuild: npm install spessasynth_lib@4.3.14 esbuild in a scratch folder,
+then run esbuild as above on node_modules/spessasynth_lib/dist/index.js and
+copy dist/spessasynth_processor.min.js.

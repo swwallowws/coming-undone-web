@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en" data-category="transcribe">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Try Coming Undone</title>
+    <link rel="icon" href="../favicons/favicon-32.png" sizes="32x32" type="image/png" />
+    <link rel="icon" href="../favicons/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="../favicons/apple-touch-icon.png" />
+    <script>
+      // For framing (the showcase site): ?theme=paper|night picks the mode
+      // before first paint, otherwise the system scheme applies. The demo
+      // shell itself handles ?embed=1.
+      (function () {
+        var t = new URLSearchParams(location.search).get("theme");
+        if (t === "paper" || t === "night") document.documentElement.dataset.theme = t;
+      })();
+    </script>
+    <link rel="stylesheet" href="../vendor/design/tokens.css" />
+    <link rel="stylesheet" href="../vendor/design/steprail.css" />
+    <link rel="stylesheet" href="../vendor/design/iconbutton.css" />
+    <link rel="stylesheet" href="../vendor/design/demoshell.css" />
+    <link rel="stylesheet" href="../vendor/design/playhead.css" />
+    <link rel="stylesheet" href="try.css" />
+  </head>
+  <body>
+    <div id="demo">
+      <div class="try-live">
+        <p id="message" class="try-message" role="status">Loading the song…</p>
+        <div class="try-row">
+          <button id="play" type="button" disabled data-icon="play" data-toggle data-key="Space" aria-label="Play"></button>
+          <span id="song" class="try-song"></span>
+          <span id="time" class="try-fine try-time"></span>
+        </div>
+        <canvas id="wave" class="try-wave" aria-label="Waveform of the full mix; click or drag to move the playhead"></canvas>
+        <div class="try-row">
+          <span class="try-label" id="parts-label">Parts</span>
+          <span id="parts" class="try-parts" role="group" aria-labelledby="parts-label"></span>
+        </div>
+        <div class="try-row">
+          <span class="try-label" id="mode-label">Hear as</span>
+          <span class="try-switch" role="group" aria-labelledby="mode-label">
+            <button id="mode-audio" type="button" aria-pressed="true" disabled>Audio</button>
+            <button id="mode-midi" type="button" aria-pressed="false" disabled>MIDI</button>
+          </span>
+        </div>
+        <div class="try-stage" data-demoshell-mark>
+          <canvas id="roll"></canvas>
+          <p id="empty" class="try-empty">Pick a part to see it on its own.</p>
+        </div>
+      </div>
+    </div>
+    <script type="module" src="try.js"></script>
+  </body>
+</html>

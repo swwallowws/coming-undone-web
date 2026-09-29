@@ -1,0 +1,7 @@
+coming-undone-browser-engine 1.0.0
+onnxruntime-web 1.30.0 (wasm from jsDelivr)
+@tensorflow/tfjs 3.21.0
+@spotify/basic-pitch 1.0.1
+demucs-web 1.0.2
+protobufjs 7.6.6
+built from coming-undone-browser-engine
