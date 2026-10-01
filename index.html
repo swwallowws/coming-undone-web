@@ -884,8 +884,9 @@ function fail(e) {
       "Today's free online runs at Hugging Face are used up for you" + (e.detail ? ` (they come back in ${e.detail})` : "") + ". " +
       (engines.local ? "You can run it on this computer instead, with no limit. " :
         "Coming Undone also runs on your own computer, with no limit: start stemscribe-web there and this page finds it. ") +
-      (engines.browser ? "Or run it right in your browser, also with no limit." :
-        CONFIG.showBrowserEngine ? "Running it right in your browser is coming later." : "");
+      (engines.browser ? "Or run it right in your browser, also with no limit. " :
+        CONFIG.showBrowserEngine ? "Running it right in your browser is coming later. " : "") +
+      "Need more online runs? Get in touch.";
     if (engines.browser) {
       const b = document.createElement("button");
       b.textContent = "Run in your browser";
@@ -903,6 +904,16 @@ function fail(e) {
       b.onclick = () => lookForLocal(true).then(() => { if (engines.local) { selectEngine("local"); $("err-panel").classList.add("hidden"); } });
       acts.appendChild(b);
     }
+    // More online runs would cost real GPU time: ask who wants them (a paid tier
+    // later, once the non-commercial models are swapped out).
+    const more = document.createElement("button");
+    more.textContent = "Ask for more online runs";
+    more.onclick = () => {
+      if ($("contact").classList.contains("hidden")) $("contact-open").click();
+      if (!$("c-making").value) $("c-making").value = "I'd like more online runs of Coming Undone. What I'm working on: ";
+      $("contact").scrollIntoView({ behavior: "smooth", block: "center" });
+    };
+    acts.appendChild(more);
     return;
   }
   $("err-title").textContent = kind === "unreachable" ? "Not reachable" : kind === "input" ? "One thing first" : "Failed";
