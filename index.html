@@ -227,13 +227,13 @@
     <input type="text" id="url" placeholder="https://www.youtube.com/watch?v=..." aria-label="Link to audio">
 
     <div class="form-grid">
-      <span class="label">Stems</span>
+      <span class="label">Parts</span>
       <div><span class="choice" data-for="model">
-          <button data-v="htdemucs">4 stems</button><button data-v="htdemucs_6s">6 stems</button></span>
+          <button data-v="htdemucs">4 parts</button><button data-v="htdemucs_6s">6 parts</button></span>
         <div class="hint" id="model-hint"></div></div>
       <input type="hidden" id="model" value="htdemucs">
 
-      <span class="label">Transcriber</span>
+      <span class="label">Notes</span>
       <div><span class="choice" data-for="backend" id="backend-choice"></span>
         <div class="hint" id="backend-hint"></div></div>
       <input type="hidden" id="backend" value="muscriptor">
@@ -265,7 +265,7 @@
       <label class="num"><input type="number" id="tempo" placeholder="auto" step="0.01" min="20" max="400"> <span id="tempo-unit">BPM</span>
         <span class="mut">empty: detected from the audio</span></label>
 
-      <span class="label">Meter</span>
+      <span class="label">Time signature</span>
       <div><span class="choice" data-for="meter">
           <button data-v="4/4">4/4</button><button data-v="3/4">3/4</button><button data-v="6/8">6/8</button><button data-v="9/8:2+2+2+3">9/8 (2+2+2+3)</button><button data-v="12/8">12/8</button></span>
         <div class="hint" id="meter-hint"></div></div>
@@ -297,7 +297,7 @@
 
       <span></span>
       <div class="row" style="margin-top:8px">
-        <button class="primary" id="go" disabled>Transcribe</button>
+        <button class="primary" id="go" disabled>Split and write down</button>
         <button class="ghost hidden" id="again">New file</button>
       </div>
     </div>
@@ -381,7 +381,7 @@
   <footer class="credits" id="credits">
     <h2>Models</h2>
     <ul>
-      <li>Stems: <a href="https://github.com/facebookresearch/demucs" target="_blank" rel="noreferrer noopener">htdemucs</a>
+      <li>Parts: <a href="https://github.com/facebookresearch/demucs" target="_blank" rel="noreferrer noopener">htdemucs</a>
         (Défossez et al., Meta). Research-only weights. In your browser: the ONNX export by
         <a href="https://huggingface.co/timcsy/demucs-web-onnx" target="_blank" rel="noreferrer noopener">timcsy</a>.</li>
       <li>Notes: <a href="https://github.com/spotify/basic-pitch" target="_blank" rel="noreferrer noopener">basic-pitch</a>
@@ -459,7 +459,7 @@ const WHERE = {
       ? " No WebGPU in this browser, so it runs on the CPU: about 2.5 times slower."
       : " Desktop Chrome or Edge with WebGPU: about 10 s per 20 s of audio.";
     return `Runs right here in your browser: nothing leaves your machine. ${size}${speed} ` +
-           `Simpler than the other two: 4 stems, no beat grid.`;
+           `Simpler than the other two: 4 parts, no beat grid.`;
   },
 };
 
@@ -612,15 +612,18 @@ const MODEL_HINT = {
   htdemucs: 'drums, bass, vocals, other: guitars land in "other"',
   htdemucs_6s: "adds guitar and piano; slower, and two guitars stay together",
 };
+// what each transcriber is for, in plain words; its name follows in brackets
+const BACKEND_LABEL = { muscriptor: "best quality (MuScriptor)", "basic-pitch": "fastest (basic-pitch)" };
 function setBackends(list) {
   const box = $("backend-choice");
-  box.innerHTML = list.map(b => b.off ? `<button data-v="${esc(b.name)}" disabled title="${esc(b.off)}">${esc(b.name)}</button>`
-    : `<button data-v="${esc(b.name)}">${esc(b.name)}</button>`).join("");
+  const label = b => esc(BACKEND_LABEL[b.name] || b.name);
+  box.innerHTML = list.map(b => b.off ? `<button data-v="${esc(b.name)}" disabled title="${esc(b.off)}">${label(b)}</button>`
+    : `<button data-v="${esc(b.name)}">${label(b)}</button>`).join("");
   if (!list.some(b => !b.off && b.name === $("backend").value)) $("backend").value = list[0].name;
   choiceHooks.backend = () => {
     const b = list.find(x => x.name === $("backend").value);
     $("backend-hint").textContent = b && b.hint ? b.hint : b && b.noncommercial
-      ? "best quality; CC-BY-NC weights, so non-commercial use only" : "Apache-2.0, fast, safe for commercial use";
+      ? "CC-BY-NC weights, so non-commercial use only" : "Apache-2.0, safe for commercial use";
     showBudget();
   };
   wireChoices();
@@ -801,7 +804,7 @@ function refresh() {
   const u = $("url").value.trim();
   const ok = !!file || /^https?:\/\/\S+$/i.test(u);
   $("go").disabled = !ok;
-  $("go").textContent = (!file && u) ? "Fetch and transcribe" : "Transcribe";
+  $("go").textContent = (!file && u) ? "Fetch, split and write down" : "Split and write down";
 }
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const numOr = (id, d) => $(id).value === "" ? d : parseFloat($(id).value);

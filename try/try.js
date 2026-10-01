@@ -22,12 +22,20 @@ const shell = demoShell($("demo"), {
     { id: "solo", label: "Solo a part" },
     { id: "midi", label: "Switch it to MIDI" },
   ],
-  full: { coming: true },
-  endText: "Done. Explore freely.",
+  // The rail's title stays a plain "Try it out!"; the way to the full studio comes at
+  // the end of the tour, as in every demo.
+  endText: "That was the first step. ",
   onReset: startOver,
   primary: { toggle: () => playBtn.toggle() },   // Space plays; no "Space: play" hint under the rail
 });
 const rail = shell.rail;
+// After the tour: the full studio, in a new tab so the demo stays where it is.
+{
+  const full = Object.assign(document.createElement("a"), {
+    className: "full-link", href: "../", target: "_blank", rel: "noopener", textContent: "Full version ↗",
+  });
+  document.querySelector(".steprail-end")?.append(full);
+}
 
 const playBtn = iconButton($("play"), {
   onPress: (pressed) => {
